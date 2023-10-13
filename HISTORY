@@ -1,2 +1,8 @@
 v1.0
-Project creation. Project in a fully working state.
+- Project creation
+- Project in a fully working state.
+
+v1.1
+- Fixed bug in class methods. They were missed
+- Fixed bug in running from other directories
+- Added footer with date and link to this project
