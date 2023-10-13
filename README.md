@@ -8,14 +8,14 @@ Generates documentation in Markdown format from Docstrings
 
 The CLI provides several arguments to customise the generated documents:
 ```
--s: Single mode. Creates a single document. If not specified, one document per inspected file is created, along with an index file.
--d: The directory in which to look for files to extract docstrings from. Moves recursively through the file system starting here. Defaults to current working directory.
--dd: The destination directory where the documents should be placed. Defaults to current working directory. If you specify a directory which does not exist, it will be created for you.
+-s: Single mode. Creates a single document called API.md. If not specified, one document per inspected file is created, along with an index file.
+-d <dir>: The directory in which to look for files to extract docstrings from. Moves recursively through the file system starting here. Defaults to current working directory.
+-dd <dir>: The destination directory where the documents should be placed. Defaults to current working directory. If you specify a directory which does not exist, it will be created for you.
 ```
 
 These are the minimum arguments required. Title and description.
 ```bash
-./generate.py -t "Project name" -desc "Description of my project"
+./create_docs.py -t "Project name" -desc "Description of my project"
 ```
 
 
@@ -33,6 +33,10 @@ create_docs(
     destination=".",
 )
 ```
+
+## Todo
+- Sort functions and classes. Difficult because we store objects, not names
+- Add full module path to document filenames. Currently, there's a risk of a name collision
 
 ## Caveats
 - Files are imported as modules

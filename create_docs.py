@@ -3,12 +3,13 @@
 
 import os
 import argparse
-from inspect import ismodule, isclass, isfunction, ismethod
+from inspect import ismodule, isclass, isfunction
 from importlib import import_module
 import sys
 from pathlib import Path
 
 EXCLUDED_FILES = [".", "__", "test_"]
+SINGLE_DOC_NAME = "API.md"
 
 
 class DataTypes:
@@ -187,6 +188,8 @@ def find_files(directory: str):
 
 
 def parse_args():
+    """Creates an argparse instance"""
+
     parser = argparse.ArgumentParser(description="Docstring to Markdown generator")
 
     parser.add_argument(
@@ -256,6 +259,7 @@ def create_docs(
     """
 
     result = {}
+    doc_strings = {}
 
     # Create destination directory if it doesn't exist
     if not os.path.exists(destination):
@@ -264,35 +268,34 @@ def create_docs(
     # Find all eligible files
     files = find_files(directory)
 
+    # Create text for the document(s)
     for fname in files:
-        # If using multiple files, write the title to each document
-
         # Find all classes and functions
         module_name = fname.replace(".py", "")
         mod = get_mod_from_file(fname)
+        doc_strings[module_name] = mod.__doc__  # Save file docstring for index document
         func_data = find_functions(mod, module_name)
 
-        result[module_name] = []
-        # if multiple:
-        #     result[module_name].append(format_title(title, description))
-
         # Extract and store docstrings
+        result[module_name] = []
         result[module_name].append(format_filename(mod, fname))
         result[module_name].append(format_docs(func_data, module_name))
 
+    # Create document files
     if multiple:
         with open(os.path.join(destination, "index.md"), "w") as idx:
-            idx.write(format_title(title, description))  # TODO: add docstring
+            idx.write(format_title(title, description))
             for module_name, text in result.items():
                 # Create document
                 with open(os.path.join(destination, module_name + ".md"), "w") as f:
                     f.write(format_title(title, description))
                     f.write("\n".join(text))
                 # Update index document
-                idx.write(f"- [{module_name}.md]({module_name}.md)\n")
+                doc = doc_strings[module_name]
+                idx.write(f"- [{module_name}.md]({module_name}.md): {doc}\n")
 
     else:  # Single document
-        with open(os.path.join(destination, "API.md"), "w") as f:
+        with open(os.path.join(destination, SINGLE_DOC_NAME), "w") as f:
             f.write(format_title(title, description))
             for text in result.values():
                 f.write("\n".join(text))
@@ -310,5 +313,3 @@ if __name__ == "__main__":
         multiple=args.s,
         destination=args.dd[0],
     )
-
-# TODO: multiple file: there will be filename collisions. need dir hierachy, or add module to filename
