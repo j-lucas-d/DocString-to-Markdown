@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generates documentation in Markdown format from Docstrings"""
 
+import os
 import argparse
 from inspect import ismodule, isclass, isfunction, ismethod
 from importlib import import_module
@@ -68,7 +69,6 @@ def find_functions(mod, filter_module: str) -> DataTypes:
         elif isclass(obj):
             result.classes.append(obj)
         elif isfunction(obj):
-            print(">>>>>>>is func", obj.__name__, obj.__module__)
             result.functions.append(obj)
         else:
             pass  # TODO: global vars
@@ -97,21 +97,25 @@ def format_docs(data: DataTypes, filter_module: str, _path: str = ""):
     for func in data.functions:
         result.append(f"### FUNCTION: {_path}{func.__name__}\n")
         result.append(func.__doc__)
-        result.append("\n---\n")  # Horizontal rule
         if not func.__doc__:
+            result[-1] = "!!! WARNING: NO DOCSTRING FOUND !!!"
             print(f"Warning: No docstring found for: {func.__name__}!", file=sys.stderr)
+        result.append("\n---\n")  # Horizontal rule
 
     # Classes second
     for cls in data.classes:
         result.append(f"### CLASS: {cls.__name__}\n")
         result.append(cls.__doc__)
         if not cls.__doc__:
+            result[-1] = "!!! WARNING: NO DOCSTRING FOUND !!!"
             print(f"Warning: No docstring found for: {cls.__name__}!", file=sys.stderr)
         cls_data = find_functions(cls, filter_module)
         # Recurse into class to find subclasses and methods
         format_docs(cls_data, filter_module, _path=_path + cls.__name__)
 
-    return "\n".join(result)
+    if result:
+        result = "\n".join(result)
+    return result
 
 
 def format_title(title: str, description: str):
@@ -124,20 +128,20 @@ def format_title(title: str, description: str):
     Returns:
         Markdown formatted text
     """
-    return f"# {title}\n{description}\n"
+    return f"# {title}\n\n{description}\n\n"
 
 
-def format_filename(name: str, path: str):
+def format_filename(mod, path: str):
     """Creates a Markdown formatted module header
 
     Args:
-        name: Name of module
+        mod: Module object
         path: Path to module
 
     Returns:
         Markdown formatted text
     """
-    return f"## FILE: [{name}]({path})\n"  # TODO: add file docstring
+    return f"## FILE: [{mod.__name__}]({path})\n\n{mod.__doc__}\n"
 
 
 def is_valid(filename: str):
@@ -182,31 +186,129 @@ def find_files(directory: str):
     return files
 
 
-def main(directory: str, title: str, description: str):
+def parse_args():
+    parser = argparse.ArgumentParser(description="Docstring to Markdown generator")
+
+    parser.add_argument(
+        "-s",
+        action="store_false",
+        help="Writes the entire document into a single file. Defaults to multiple files",
+    )
+    parser.add_argument(
+        "-d",
+        nargs=1,
+        default=".",
+        metavar="Directory to store documents in",
+        help=(
+            "Set directory to write documents to. Creates it if it doesn't exist. "
+            "Defaults to current directory"
+        ),
+    )
+    parser.add_argument(
+        "-t",
+        nargs=1,
+        metavar="Title of document",
+        help="Usually the same as the project name. Set the title of the document",
+    )
+    parser.add_argument(
+        "-desc",
+        nargs=1,
+        metavar="Description of the document",
+        help=(
+            "Set directory to write documents to. Creates it if it doesn't exist. "
+            "Defaults to current directory"
+        ),
+    )
+    parser.add_argument(
+        "-dd",
+        nargs=1,
+        metavar="Destination directory",
+        default=".",
+        help="The directory in which to write the document(s)",
+    )
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        exit(1)
+    return parser.parse_args()
+
+
+def create_docs(
+    title: str,
+    description: str,
+    directory: str = ".",
+    multiple: bool = True,
+    destination: str = ".",
+):
     """Finds all Python files, retrieves docstrings, and generates Markdown text
 
     Args:
-        directory: Directory to inspect for docstrings
         title: Title of project
         description: Description of project
+        directory: Default CWD. Directory to inspect for docstrings
+        multiple: Default True. When True, splits documents into multiple files, otherwise
+        stores the entire document in a single file
+        destination: Defaults current working directory. The directory in which to write
+        the document(s)
+
+    Returns:
+        None. Writes documents to disk.
     """
 
-    result = []
+    result = {}
+
+    # Create destination directory if it doesn't exist
+    if not os.path.exists(destination):
+        os.makedirs(destination)
+
+    # Find all eligible files
     files = find_files(directory)
 
-    result.append(format_title(title, description))
-
     for fname in files:
-        filter_module = fname.replace(".py", "")
-        mod = get_mod_from_file(fname)
-        func_data = find_functions(mod, filter_module)
-        result.append(format_filename(mod.__name__, fname))
-        result.append(format_docs(func_data, filter_module))
+        # If using multiple files, write the title to each document
 
-    print("\n".join(result))
+        # Find all classes and functions
+        module_name = fname.replace(".py", "")
+        mod = get_mod_from_file(fname)
+        func_data = find_functions(mod, module_name)
+
+        result[module_name] = []
+        # if multiple:
+        #     result[module_name].append(format_title(title, description))
+
+        # Extract and store docstrings
+        result[module_name].append(format_filename(mod, fname))
+        result[module_name].append(format_docs(func_data, module_name))
+
+    if multiple:
+        with open(os.path.join(destination, "index.md"), "w") as idx:
+            idx.write(format_title(title, description))  # TODO: add docstring
+            for module_name, text in result.items():
+                # Create document
+                with open(os.path.join(destination, module_name + ".md"), "w") as f:
+                    f.write(format_title(title, description))
+                    f.write("\n".join(text))
+                # Update index document
+                idx.write(f"- [{module_name}.md]({module_name}.md)\n")
+
+    else:  # Single document
+        with open(os.path.join(destination, "API.md"), "w") as f:
+            f.write(format_title(title, description))
+            for text in result.values():
+                f.write("\n".join(text))
 
 
 if __name__ == "__main__":
-    main(".", "Example Repo", "An excellent project!")
-# TODO: should I purhapse use a :::placeholder::: tag to inject the descriptions?
-# TODO: Should the doc files be separate? Might make it easier to read
+    args = parse_args()
+    assert args.t, "Must provide title"
+    assert args.desc, "Must provide description"
+
+    create_docs(
+        directory=args.d[0],
+        title=args.t[0],
+        description=args.desc[0],
+        multiple=args.s,
+        destination=args.dd[0],
+    )
+
+# TODO: multiple file: there will be filename collisions. need dir hierachy, or add module to filename
