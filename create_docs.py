@@ -11,16 +11,18 @@ from inspect import (
     getdoc,
     getargvalues,
     formatargvalues,
+    getfullargspec,
 )
 from importlib import import_module
 import sys
 from pathlib import Path
-from time import time, strftime
+from time import strftime
 
 EXCLUDED_FILES = [".", "__", "test_"]
 SINGLE_DOC_NAME = "API.md"
 NAME = "DocString-to-Markdown"
 URL = "https://github.com/j-lucas-d/DocString-to-Markdown"
+INCLUDE_SOURCE = False
 
 
 class DataTypes:
@@ -93,6 +95,33 @@ def find_functions(mod, filter_module: str) -> DataTypes:
     return result
 
 
+def process_arguments(data: getfullargspec):
+    """Creates Markdown for the arguments list
+
+    Args:
+        data: Object containing argument data
+
+    Returns:
+        Markdown formatted text
+    """
+
+    print(data)
+    result = ["**Arguments**"]
+    if data.args:
+        for arg in data.args:
+            if arg not in ("self", "cls"):
+                result.append(f"- {arg}")
+                if data.annotations.get(arg):
+                    result[-1] += f" ({data.annotations.get(arg).__name__})"
+
+    if data.annotations.get("return"):
+        result.append("\n**Returns**: ")
+        result.append(data.annotations["return"].__name__)
+
+    result.append("\n")
+    return "\n".join(result)
+
+
 def format_docs(data: DataTypes, filter_module: str, _path: str = ""):
     """Creates formatted Markdown text for the classes and functions
     provided
@@ -113,7 +142,10 @@ def format_docs(data: DataTypes, filter_module: str, _path: str = ""):
     # Functions first
     for func in data.functions:
         result.append(f"### FUNCTION: {_path}{func.__name__}\n")
-        result.append(func.__doc__)
+        result.append(f"{func.__doc__}\n")
+        result.append(process_arguments(getfullargspec(func)))
+        if INCLUDE_SOURCE:
+            result.append(f"```python\n{getsource(func)}```\n")
         if not func.__doc__:
             result[-1] = "!!! WARNING: NO DOCSTRING FOUND !!!"
             print(f"Warning: No docstring found for: {func.__name__}!", file=sys.stderr)
@@ -122,7 +154,7 @@ def format_docs(data: DataTypes, filter_module: str, _path: str = ""):
     # Classes second
     for cls in data.classes:
         result.append(f"### CLASS: {cls.__name__}\n")
-        result.append(cls.__doc__)
+        result.append(f"{cls.__doc__}\n")
         if not cls.__doc__:
             result[-1] = "!!! WARNING: NO DOCSTRING FOUND !!!"
             print(f"Warning: No docstring found for: {cls.__name__}!", file=sys.stderr)
@@ -228,6 +260,11 @@ def parse_args():
         help="Writes the entire document into a single file. Defaults to multiple files",
     )
     parser.add_argument(
+        "-c",
+        action="store_true",
+        help="Writes function source code to the document",
+    )
+    parser.add_argument(
         "-d",
         nargs=1,
         default=".",
@@ -272,6 +309,7 @@ def create_docs(
     directory: str = ".",
     multiple: bool = True,
     destination: str = ".",
+    show_source: bool = False,
 ):
     """Finds all Python files, retrieves docstrings, and generates Markdown text
 
@@ -283,6 +321,7 @@ def create_docs(
         stores the entire document in a single file
         destination: Defaults current working directory. The directory in which to write
         the document(s)
+        show_source: Default False. When True, puts function code into the documents as code blocks
 
     Returns:
         None. Writes documents to disk.
@@ -290,6 +329,8 @@ def create_docs(
 
     result = {}
     doc_strings = {}
+    global INCLUDE_SOURCE
+    INCLUDE_SOURCE = show_source
 
     # Make directory visible to Python for importing
     sys.path.append(directory)
@@ -348,4 +389,5 @@ if __name__ == "__main__":
         description=args.desc[0],
         multiple=args.s,
         destination=args.dd[0],
+        show_source=args.c,
     )
