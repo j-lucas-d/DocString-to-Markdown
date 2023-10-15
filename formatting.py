@@ -1,5 +1,6 @@
 """Class to format docstrings in Markdown"""
 
+from dataclasses import dataclass
 from inspect import getsource, getfullargspec
 import sys
 from time import strftime
@@ -59,6 +60,48 @@ class TextModifier:
         return False
 
 
+class Arguments:
+    """Data class to hold argument data"""
+
+    def __init__(self):
+        self.arg_list = []
+        self.ret = None
+
+    @dataclass
+    class Args:
+        """Holds argument data"""
+
+        name: str = None  # Name of variable
+        var_type: str = None  # Variable type, None=unknown
+        desc: str = None  # Variable description, None=unknown
+
+    @dataclass
+    class Returns:
+        """Holds return data"""
+
+        var_type: str = None  # Return type, None=unknown
+        desc: str = None  # Description of returned data
+
+    def add_arg(self, name: str, var_type: str, desc: str = None) -> None:
+        """Stores a new argument"""
+        self.arg_list.append(self.Args(name, var_type, desc))
+
+    def add_arg_desc(self, name: str, desc: str) -> None:
+        """Update existing argument list with a description"""
+        for obj in self.arg_list:
+            if obj.name == name:
+                obj.desc = desc
+                break
+
+    def add_return(self, var_type: str, desc: str = None) -> None:
+        """Store new return data"""
+        self.ret = self.Returns(var_type, desc)
+
+    def add_ret_desc(self, desc: str) -> None:
+        """Update existing argument list with a description"""
+        self.ret.desc = desc
+
+
 class FormattedText:
     """Class to format docstrings in Markdown"""
 
@@ -68,35 +111,34 @@ class FormattedText:
     def __init__(self):
         self.formatted_lines = []
 
-    def _process_arguments(self, data: getfullargspec):
-        """Creates Markdown for the arguments list
+    @staticmethod
+    def _process_arguments(data: getfullargspec)->Arguments:
+        """Creates Markdown for the inspected arguments list
 
         Args:
             data: Object containing argument data
 
         Returns:
-            Markdown formatted text
+            Arguments instance containing argument and return information
         """
 
-        self.formatted_lines.append("**Arguments**")
+        args = Arguments()
+
         if data.args:
             for arg in data.args:
                 if arg not in ("self", "cls"):
-                    self.formatted_lines.append(f"- {arg}")
                     if data.annotations.get(arg):
-                        self.formatted_lines[
-                            -1
-                        ] += f" ({data.annotations.get(arg).__name__})"
+                        args.add_arg(
+                            name=arg, var_type=data.annotations.get(arg).__name__
+                        )
 
-        self.formatted_lines.append("\n**Returns**: ")
         if data.annotations.get("return"):
-            self.formatted_lines.append(data.annotations["return"].__name__)
-        else:
-            self.formatted_lines.append("- Unknown")
+            args.add_return(data.annotations["return"].__name__)
 
-        self.formatted_lines.append("\n")
+        return args
 
-    def _process_docstring(self, text: str):
+    @staticmethod
+    def _process_docstring(text: str):
         result = []
         indent_args = False  # Determine docstring format type
 
@@ -116,7 +158,6 @@ class FormattedText:
                     indent_args = False
                 result.append(TextModifier.remove_indentation(line))
 
-        print(">>", result)
         return "\n".join(result)
 
     def _document_functions(
