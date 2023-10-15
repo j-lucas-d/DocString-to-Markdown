@@ -10,3 +10,9 @@ v1.1
 v1.2
 - Add arguments and cast separate from the actual docstring
 - Add option to document the functions
+
+v2.0
+- Refactored the program to use classes to organise and store information, thus simplifying the function calls
+- Added a settings class which automatically reads/writes a config file, unique to each project being documented
+- Updated generated documentation for this project to use multiple files
+- Updated README
