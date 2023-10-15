@@ -3,8 +3,60 @@
 from inspect import getsource, getfullargspec
 import sys
 from time import strftime
+import re
 from files import find_functions, DataTypes
 from settings import CONFIG
+
+
+class TextModifier:
+    """Methods for recognising common docstring patterns and reformatting them"""
+
+    @staticmethod
+    def remove_indentation(text: str) -> str:
+        """Removes any leading whitespace"""
+        return re.sub(r"^\s+", "", text, re.MULTILINE)
+
+    @staticmethod
+    def is_arg_header(text: str) -> bool:
+        """Return true if text is an indented argument"""
+        return bool(re.findall(r"^\s+(Args:?)$", text))
+
+    @staticmethod
+    def highlight_arg_header(text: str) -> str:
+        """Adds a bullet to a docstring argument"""
+        return re.sub(r"\s+(Args:?)$", "**Args:**", text)
+
+    @staticmethod
+    def is_return_header(text: str) -> bool:
+        """Return True if a return section is detected"""
+        return bool(re.findall(r"^\s+(Returns?:?)$", text))
+
+    @staticmethod
+    def highlight_return_header(text: str) -> str:
+        """Bold a return header"""
+        return re.sub(r"\s+(Returns?:?)$", "**Returns:**", text)
+
+    @staticmethod
+    def is_indented_arg(text: str) -> bool:
+        """Return True if text is indented, which may indicate an argument"""
+        return bool(re.findall(r"^(\s+:?[\d\w])", text))
+
+    @staticmethod
+    def bullet_indent(text: str) -> str:
+        """Replace an indent with a bullet"""
+        return re.sub(r"^\s+", "- ", text)
+
+    @staticmethod
+    def is_sphinx_arg(text: str) -> bool:
+        """Returns True if text is a Sphinx style argument"""
+        return bool(re.findall(r"^(\s+:)", text))
+
+    @staticmethod
+    def is_blank_line(text: str) -> bool:
+        """Return True if text is a blank line or whitespace"""
+        if re.findall(r"^$", text) or re.findall(r"^\s+$", text):
+            return True
+        return False
 
 
 class FormattedText:
@@ -40,9 +92,32 @@ class FormattedText:
         if data.annotations.get("return"):
             self.formatted_lines.append(data.annotations["return"].__name__)
         else:
-            self.formatted_lines.append("None")
+            self.formatted_lines.append("- Unknown")
 
         self.formatted_lines.append("\n")
+
+    def _process_docstring(self, text: str):
+        result = []
+        indent_args = False  # Determine docstring format type
+
+        for line in text.split("\n"):
+            if TextModifier.is_arg_header(line):
+                result.append(TextModifier.highlight_arg_header(line))
+                indent_args = True
+            elif TextModifier.is_return_header(line):
+                result.append(TextModifier.highlight_return_header(line))
+                indent_args = True
+            elif TextModifier.is_indented_arg(line) and indent_args:
+                result.append(TextModifier.bullet_indent(line))
+            elif TextModifier.is_sphinx_arg(line):
+                result.append(TextModifier.bullet_indent(line))
+            else:
+                if TextModifier.is_blank_line(line):
+                    indent_args = False
+                result.append(TextModifier.remove_indentation(line))
+
+        print(">>", result)
+        return "\n".join(result)
 
     def _document_functions(
         self,
@@ -56,7 +131,7 @@ class FormattedText:
             docstring = "!!! WARNING: NO DOCSTRING FOUND !!!"
 
         self.formatted_lines.append(f"### FUNCTION: {_path}{name}\n")
-        self.formatted_lines.append(f"{docstring}\n")
+        self.formatted_lines.append(f"{self._process_docstring(docstring)}\n")
         self._process_arguments(arguments)
         self.horizontal_rule()
 
@@ -70,7 +145,7 @@ class FormattedText:
             docstring = "!!! WARNING: NO DOCSTRING FOUND !!!"
 
         self.formatted_lines.append(f"### CLASS: {name}\n")
-        self.formatted_lines.append(f"{docstring}\n")
+        self.formatted_lines.append(f"{self._process_docstring(docstring)}\n")
         # TODO: Add arguments?
 
     def format_docs(self, data: DataTypes, filter_module: str, _path: str = ""):

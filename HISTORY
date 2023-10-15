@@ -16,3 +16,8 @@ v2.0
 - Added a settings class which automatically reads/writes a config file, unique to each project being documented
 - Updated generated documentation for this project to use multiple files
 - Updated README
+
+v2.1
+- Added the option of specifying the document filename when -s is used for single mode
+- Added intelligent formatting of docstrings
+- Combined automatically found arguments with those manually created in the docstrings
