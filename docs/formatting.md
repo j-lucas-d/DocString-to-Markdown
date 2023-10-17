@@ -3,7 +3,7 @@
 Automatically generated reference documentation.
 
 
-## FILE: [formatting](formatting.py)
+## FILE: [formatting](../formatting.py)
 
 Class to format docstrings in Markdown
 

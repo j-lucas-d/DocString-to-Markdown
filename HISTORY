@@ -21,3 +21,7 @@ v2.1
 - Added intelligent formatting of docstrings, so that they are flat, and arguments are bulleted
 - Removed inspected arguments temporarily. They duplicated the docstrings
 - Added warnings when docstrings don't have arguments listed
+
+v2.2
+- Fixed bug where sub-directories in the search path caused a crash
+- Fixed bug when docs are stored in sub-directory, the link to the Python file doesn't work

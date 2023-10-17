@@ -66,8 +66,6 @@ create_docs(
 - Sort functions and classes. Difficult because we store objects, not names
 - Find a more elegant solution to displaying docstrings properly with indenting and highlighting
 - Add CLI for exclude
-- Bug: some directories cause program crash
-- Bug: When docs are stored in sub-directory, the link to the Python file doesn't work
 - Added the option of specifying the document filename when -s is used for single mode
 
 ## Caveats
