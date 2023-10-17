@@ -3,7 +3,7 @@
 Automatically generated reference documentation.
 
 
-## FILE: [files](files.py)
+## FILE: [files](../files.py)
 
 Classes and functions for working with files
 

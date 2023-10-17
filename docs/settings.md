@@ -3,7 +3,7 @@
 Automatically generated reference documentation.
 
 
-## FILE: [settings](settings.py)
+## FILE: [settings](../settings.py)
 
 Configuration for documented project
 

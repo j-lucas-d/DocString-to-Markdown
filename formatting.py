@@ -5,6 +5,7 @@ from inspect import getsource, getfullargspec
 import sys
 from time import strftime
 import re
+import os
 from files import find_functions, DataTypes
 from settings import CONFIG
 
@@ -287,8 +288,11 @@ class FormattedText:
         Returns:
             Markdown formatted text
         """
+        directory = os.path.relpath(
+            os.path.abspath(CONFIG.directory), os.path.abspath(CONFIG.destination)
+        )
         self.formatted_lines.append(
-            f"## FILE: [{mod.__name__}]({path})\n\n{mod.__doc__}\n"
+            f"## FILE: [{mod.__name__}]({directory}{os.sep}{path})\n\n{mod.__doc__}\n"
         )
 
     def add_index(self, name: str, docstring: str):

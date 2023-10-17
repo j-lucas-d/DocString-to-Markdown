@@ -3,7 +3,7 @@
 Automatically generated reference documentation.
 
 
-## FILE: [create_docs](create_docs.py)
+## FILE: [create_docs](../create_docs.py)
 
 Generates documentation in Markdown format from Docstrings
 

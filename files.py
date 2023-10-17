@@ -56,7 +56,7 @@ def is_valid(filename: str):
     return True  # A valid filename or no list provided
 
 
-def find_files(directory: str):
+def find_files(directory: [str, Path]):
     """Find all eligible Python files for inspection, recursively
 
     Args:
@@ -77,7 +77,7 @@ def find_files(directory: str):
     ]
 
     for subdir in dirs:
-        files += find_files(subdir.name)
+        files += find_files(cwd.joinpath(subdir.name))
 
     return files
 
