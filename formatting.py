@@ -43,6 +43,15 @@ class TextModifier:
         return bool(re.findall(r"^(\s+:?[\d\w])", text))
 
     @staticmethod
+    def get_arg_name(text: str) -> str:
+        """Returns the argument name from a docstring"""
+        patterns = [r"^\s+:param\s+(.*?):\s+.*", r"^\s+(.*?)\s+:\s+.*"]
+        for pat in patterns:
+            result = re.findall(pat, text)
+            if result:
+                return result[0]
+
+    @staticmethod
     def bullet_indent(text: str) -> str:
         """Replace an indent with a bullet"""
         return re.sub(r"^\s+", "- ", text)
@@ -50,7 +59,12 @@ class TextModifier:
     @staticmethod
     def is_sphinx_arg(text: str) -> bool:
         """Returns True if text is a Sphinx style argument"""
-        return bool(re.findall(r"^(\s+:)", text))
+        return bool(re.findall(r"^(\s+:param\s+.*?:)", text))
+
+    @staticmethod
+    def is_sphinx_return(text: str) -> bool:
+        """Returns True if text is a Sphinx style argument"""
+        return bool(re.findall(r"^(\s+:return:)", text))
 
     @staticmethod
     def is_blank_line(text: str) -> bool:
@@ -59,47 +73,34 @@ class TextModifier:
             return True
         return False
 
+    @staticmethod
+    def is_param_arg(text: str) -> bool:
+        """Returns True if text is a colon param argument"""
+        return bool(re.findall(r":param\s+(.*?):\s+(.*)", text))
+
 
 class Arguments:
     """Data class to hold argument data"""
 
     def __init__(self):
         self.arg_list = []
-        self.ret = None
+        self.ret = False
 
-    @dataclass
-    class Args:
-        """Holds argument data"""
+    def add_arg(self, name: str):
+        """Store an argument name"""
+        self.arg_list.append(name)
 
-        name: str = None  # Name of variable
-        var_type: str = None  # Variable type, None=unknown
-        desc: str = None  # Variable description, None=unknown
+    def add_ret(self):
+        """Record if a return statement was found"""
+        self.ret = True
 
-    @dataclass
-    class Returns:
-        """Holds return data"""
+    def has_arg(self, name: str):
+        """Check if an argument has been recorded"""
+        return bool(name in self.arg_list)
 
-        var_type: str = None  # Return type, None=unknown
-        desc: str = None  # Description of returned data
-
-    def add_arg(self, name: str, var_type: str, desc: str = None) -> None:
-        """Stores a new argument"""
-        self.arg_list.append(self.Args(name, var_type, desc))
-
-    def add_arg_desc(self, name: str, desc: str) -> None:
-        """Update existing argument list with a description"""
-        for obj in self.arg_list:
-            if obj.name == name:
-                obj.desc = desc
-                break
-
-    def add_return(self, var_type: str, desc: str = None) -> None:
-        """Store new return data"""
-        self.ret = self.Returns(var_type, desc)
-
-    def add_ret_desc(self, desc: str) -> None:
-        """Update existing argument list with a description"""
-        self.ret.desc = desc
+    def has_ret(self):
+        """Check if a return statement was recorded"""
+        return self.ret
 
 
 class FormattedText:
@@ -112,51 +113,59 @@ class FormattedText:
         self.formatted_lines = []
 
     @staticmethod
-    def _process_arguments(data: getfullargspec)->Arguments:
-        """Creates Markdown for the inspected arguments list
+    def _process_arguments(
+        func_name: str, inspected_args: getfullargspec, doc_args: Arguments
+    ) -> None:
+        """Compare docstring arguments with inspected arguments
 
         Args:
-            data: Object containing argument data
-
-        Returns:
-            Arguments instance containing argument and return information
+            inspected_args: Object containing argument data from the inspect module
+            doc_args: Object containing argument data from the docstring
         """
 
-        args = Arguments()
+        for arg_name in inspected_args.args:
+            if arg_name not in ("self", "cls") and not doc_args.has_arg(arg_name):
+                print(
+                    f"WARNING: '{func_name}' missing function argument: {arg_name}",
+                    file=sys.stderr,
+                )
 
-        if data.args:
-            for arg in data.args:
-                if arg not in ("self", "cls"):
-                    if data.annotations.get(arg):
-                        args.add_arg(
-                            name=arg, var_type=data.annotations.get(arg).__name__
-                        )
-
-        if data.annotations.get("return"):
-            args.add_return(data.annotations["return"].__name__)
-
-        return args
-
-    @staticmethod
-    def _process_docstring(text: str):
+    def _process_docstring(self, func_name: str, text: str, arg_data: getfullargspec):
         result = []
         indent_args = False  # Determine docstring format type
+        indent_ret = False
+        doc_args = Arguments()
 
         for line in text.split("\n"):
             if TextModifier.is_arg_header(line):
                 result.append(TextModifier.highlight_arg_header(line))
                 indent_args = True
+                indent_ret = False
             elif TextModifier.is_return_header(line):
                 result.append(TextModifier.highlight_return_header(line))
-                indent_args = True
+                indent_args = False
+                indent_ret = True
             elif TextModifier.is_indented_arg(line) and indent_args:
                 result.append(TextModifier.bullet_indent(line))
+                arg_name = TextModifier.get_arg_name(line)
+                doc_args.add_arg(arg_name)  # Store for comparison
+            elif TextModifier.is_indented_arg(line) and indent_ret:
+                result.append(TextModifier.bullet_indent(line))
+                doc_args.add_ret()  # Store for comparison
             elif TextModifier.is_sphinx_arg(line):
                 result.append(TextModifier.bullet_indent(line))
+                arg_name = TextModifier.get_arg_name(line)
+                doc_args.add_arg(arg_name)  # Store for comparison
+            elif TextModifier.is_sphinx_return(line):
+                result.append(TextModifier.bullet_indent(line))
+                doc_args.add_ret()  # Store for comparison
             else:
                 if TextModifier.is_blank_line(line):
                     indent_args = False
+                    indent_ret = False
                 result.append(TextModifier.remove_indentation(line))
+
+        self._process_arguments(func_name, arg_data, doc_args)
 
         return "\n".join(result)
 
@@ -172,8 +181,9 @@ class FormattedText:
             docstring = "!!! WARNING: NO DOCSTRING FOUND !!!"
 
         self.formatted_lines.append(f"### FUNCTION: {_path}{name}\n")
-        self.formatted_lines.append(f"{self._process_docstring(docstring)}\n")
-        self._process_arguments(arguments)
+        self.formatted_lines.append(
+            f"{self._process_docstring(name, docstring, arguments)}\n"
+        )
         self.horizontal_rule()
 
         if CONFIG.show_source:
@@ -186,7 +196,9 @@ class FormattedText:
             docstring = "!!! WARNING: NO DOCSTRING FOUND !!!"
 
         self.formatted_lines.append(f"### CLASS: {name}\n")
-        self.formatted_lines.append(f"{self._process_docstring(docstring)}\n")
+        self.formatted_lines.append(
+            f"{self._process_docstring(name, docstring,arguments)}\n"
+        )
         # TODO: Add arguments?
 
     def format_docs(self, data: DataTypes, filter_module: str, _path: str = ""):

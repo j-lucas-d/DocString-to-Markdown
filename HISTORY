@@ -18,6 +18,6 @@ v2.0
 - Updated README
 
 v2.1
-- Added the option of specifying the document filename when -s is used for single mode
-- Added intelligent formatting of docstrings
-- Combined automatically found arguments with those manually created in the docstrings
+- Added intelligent formatting of docstrings, so that they are flat, and arguments are bulleted
+- Removed inspected arguments temporarily. They duplicated the docstrings
+- Added warnings when docstrings don't have arguments listed
