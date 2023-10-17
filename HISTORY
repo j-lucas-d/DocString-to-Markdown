@@ -28,3 +28,5 @@ v2.2
 
 v2.3
 - Fix importing from sub-directories
+- Fix import exception when importing a class which inherits from a built-in
+- Added os.sep to the config file, so that it can be modified manually if needed

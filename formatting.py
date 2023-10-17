@@ -10,6 +10,17 @@ from files import find_functions, DataTypes
 from settings import CONFIG
 
 
+def get_arg_info(func) -> getfullargspec:
+    """Wrapper for getfullargspec to protect against retrieving arg data from a built in
+    class or function, which always results in an exception
+    """
+    try:
+        return getfullargspec(func)
+    except Exception:
+        print(f"Warning: Could not retrieve getfullargspec for {func.__name__}")
+    return None
+
+
 class TextModifier:
     """Methods for recognising common docstring patterns and reformatting them"""
 
@@ -166,7 +177,8 @@ class FormattedText:
                     indent_ret = False
                 result.append(TextModifier.remove_indentation(line))
 
-        self._process_arguments(func_name, arg_data, doc_args)
+        if arg_data:
+            self._process_arguments(func_name, arg_data, doc_args)
 
         return "\n".join(result)
 
@@ -223,7 +235,7 @@ class FormattedText:
             self._document_functions(
                 name=func.__name__,
                 docstring=func.__doc__,
-                arguments=getfullargspec(func),
+                arguments=get_arg_info(func),
                 source=getsource(func),
                 _path=_path,
             )
@@ -238,7 +250,7 @@ class FormattedText:
             self._document_classes(
                 name=cls.__name__,
                 docstring=cls.__doc__,
-                arguments=getfullargspec(cls),
+                arguments=get_arg_info(cls),
                 _path=_path,
             )
             if not cls.__doc__:
@@ -292,7 +304,7 @@ class FormattedText:
             os.path.abspath(CONFIG.directory), os.path.abspath(CONFIG.destination)
         )
         self.formatted_lines.append(
-            f"## FILE: [{mod.__name__}]({directory}{os.sep}{path})\n\n{mod.__doc__}\n"
+            f"## FILE: [{mod.__name__}]({directory}{CONFIG.os_sep}{path})\n\n{mod.__doc__}\n"
         )
 
     def add_index(self, name: str, docstring: str):

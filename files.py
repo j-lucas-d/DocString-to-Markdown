@@ -39,7 +39,7 @@ def get_mod_from_file(filename: str):
     """
 
     filename = filename.replace(".py", "").replace("-", "_")
-    parts = filename.split(os.sep)
+    parts = filename.split(CONFIG.os_sep)
 
     if len(parts) > 1:
         package = parts[0]
