@@ -39,7 +39,7 @@ def main():
 
         # Store module information
         result[module_name] = dict(
-            mod=mod, func_data=func_data, formatted=FormattedText()
+            mod=mod, func_data=func_data, formatted=FormattedText(), filename=fname
         )
 
     # Create document files
@@ -47,7 +47,7 @@ def main():
         with open(os.path.join(CONFIG.destination, CONFIG.single_doc_name), "w") as f:
             FormattedText().format_title()
             for name, data in result.items():
-                data["formatted"].format_filename(data["mod"], name)
+                data["formatted"].format_filename(data["mod"], data["filename"])
                 data["formatted"].format_docs(data["func_data"], name)
                 f.write(data["formatted"].formatted_text())
 
@@ -66,7 +66,7 @@ def main():
             doc_name = os.path.join(CONFIG.destination, name + ".md")
             with open(doc_name, "w") as f:
                 data["formatted"].format_title()
-                data["formatted"].format_filename(data["mod"], name)
+                data["formatted"].format_filename(data["mod"], data["filename"])
                 data["formatted"].format_docs(data["func_data"], name)
                 data["formatted"].format_footer()
                 f.write(data["formatted"].formatted_text())

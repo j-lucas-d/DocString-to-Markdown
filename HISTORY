@@ -16,3 +16,8 @@ v2.0
 - Added a settings class which automatically reads/writes a config file, unique to each project being documented
 - Updated generated documentation for this project to use multiple files
 - Updated README
+
+v2.1
+- Added intelligent formatting of docstrings, so that they are flat, and arguments are bulleted
+- Removed inspected arguments temporarily. They duplicated the docstrings
+- Added warnings when docstrings don't have arguments listed
