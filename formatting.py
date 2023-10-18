@@ -175,7 +175,9 @@ class FormattedText:
                 if TextModifier.is_blank_line(line):
                     indent_args = False
                     indent_ret = False
-                result.append(TextModifier.remove_indentation(line))
+                result.append(TextModifier.remove_indentation(line) + "\n")
+                # The extra \n is to ensure Markdown does not bunch up what are supposed
+                # to be separate lines
 
         if arg_data:
             self._process_arguments(func_name, arg_data, doc_args)
