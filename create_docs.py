@@ -32,7 +32,8 @@ def main():
     # Create text for the document(s), separated by filename
     for fname in files:
         # Find all classes and functions
-        module_name = fname.replace(".py", "")
+
+        module_name = fname.replace(".py", "").replace(CONFIG.os_sep, ".").replace("-","_")
         mod = get_mod_from_file(fname)
         doc_strings[module_name] = mod.__doc__  # Save file docstring for index document
         func_data = find_functions(mod, module_name)

@@ -19,6 +19,7 @@ class Settings:
     show_source: bool = False
     title: str = None
     description: str = None
+    os_sep = os.sep  # Is not always accurate. Git bash on Windows for example
 
     def __init__(self):
         self.read_config()

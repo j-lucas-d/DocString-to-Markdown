@@ -1,10 +1,13 @@
 """Classes and functions for working with files"""
 
 import os
-from inspect import ismodule, isclass, isfunction, ismethod
+import sys
+from inspect import ismodule, isclass, isfunction
 from importlib import import_module
 from pathlib import Path
 from settings import CONFIG
+
+sys.path.insert(0, ".")
 
 
 class DataTypes:
@@ -34,9 +37,19 @@ def get_mod_from_file(filename: str):
     Returns:
         Imported module object
     """
-    filename = filename.replace(".py", "").replace(os.sep, ".")
-    print(f"Importing: {filename}")
-    return import_module(filename)
+
+    filename = filename.replace(".py", "").replace("-", "_")
+    parts = filename.split(CONFIG.os_sep)
+
+    if len(parts) > 1:
+        package = parts[0]
+        path = ".".join(parts[1:])
+        print(f"Importing module {path} from package {package}")
+        import_module(parts[0])
+        return import_module(f".{path}", package=package)
+    else:
+        print(f"Importing: {filename}")
+        return import_module(filename)
 
 
 def is_valid(filename: str):
